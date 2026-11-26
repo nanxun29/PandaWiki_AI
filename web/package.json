@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "api": "node scripts/generate-knowledge-api.mjs",
     "preinstall": "npx only-allow pnpm",
     "icon": "pnpm --filter @panda-wiki/icons icon",
     "prepare": "cd ../ && husky web/.husky",

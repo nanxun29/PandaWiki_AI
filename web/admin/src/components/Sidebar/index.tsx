@@ -24,6 +24,17 @@ import {
 
 const MENUS = [
   {
+    label: '知识收件箱',
+    value: '/knowledge-agent',
+    pathname: 'knowledge-agent',
+    icon: IconPaperFull,
+    show: true,
+    perms: [
+      ConstsUserKBPermission.UserKBPermissionFullControl,
+      ConstsUserKBPermission.UserKBPermissionDocManage,
+    ],
+  },
+  {
     label: '文档',
     value: '/',
     pathname: 'document',

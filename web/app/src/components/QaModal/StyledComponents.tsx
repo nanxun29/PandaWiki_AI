@@ -33,29 +33,11 @@ export const StyledConversationItem = styled(Box)(({ theme }) => ({
   gap: theme.spacing(2),
 }));
 
-// 聊天气泡相关组件
-export const StyledUserBubble = styled(Box)(({ theme }) => ({
-  alignSelf: 'flex-end',
-  maxWidth: '75%',
-  padding: theme.spacing(1, 2),
-  borderRadius: '10px 10px 0px 10px',
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.primary.contrastText,
-  fontSize: 14,
-  wordBreak: 'break-word',
-}));
-
-export const StyledAiBubble = styled(Box)(({ theme }) => ({
-  alignSelf: 'flex-start',
-  display: 'flex',
-  flexDirection: 'column',
-  width: '100%',
-  gap: theme.spacing(3),
-}));
-
-export const StyledAiBubbleContent = styled(Box)(() => ({
-  wordBreak: 'break-word',
-}));
+export {
+  StyledUserBubble,
+  StyledAiBubble,
+  StyledAiBubbleContent,
+} from '@panda-wiki/ui/conversation';
 
 // 对话相关组件
 export const StyledAccordion = styled(Accordion)(() => ({

@@ -46,6 +46,12 @@ const router = [
         ),
       },
       {
+        path: '/knowledge-agent',
+        element: createElement(
+          LazyLoadable(lazy(() => import('./pages/knowledge-agent'))),
+        ),
+      },
+      {
         path: '/setting',
         element: createElement(
           LazyLoadable(lazy(() => import('./pages/setting'))),

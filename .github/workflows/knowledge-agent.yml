@@ -1,0 +1,38 @@
+name: Community knowledge agent tests
+
+on:
+  pull_request:
+    paths: ['backend/**', '.github/workflows/knowledge-agent.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: pandawiki-tests-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache-dependency-path: backend/go.sum
+      - name: Start isolated JetStream
+        run: docker run -d --name pandawiki-test-nats -p 127.0.0.1:4222:4222 nats:2.11-alpine -js
+      - name: Community build and tests
+        env:
+          PANDAWIKI_TEST_DSN: postgresql://postgres:pandawiki-tests-only@127.0.0.1:5432/postgres?sslmode=disable
+          PANDAWIKI_TEST_NATS: nats://127.0.0.1:4222
+        run: bash scripts/verify-ai-knowledge.sh

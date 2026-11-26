@@ -1,0 +1,112 @@
+name: pandawiki-ai
+
+x-backend-env: &backend-env
+  PG_DSN: host=panda-wiki-postgres user=panda-wiki password=${POSTGRES_PASSWORD:?required} dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai
+  NATS_PASSWORD: ${NATS_PASSWORD:?required}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?required}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?required}
+  JWT_SECRET: ${JWT_SECRET:?required}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?required}
+  RAG_CT_RAG_BASE_URL: ${RAG_CT_RAG_BASE_URL:?configure the existing RAG service}
+  RAG_CT_RAG_API_KEY: ${RAG_CT_RAG_API_KEY:?configure the existing RAG service key}
+  SUBNET_PREFIX: ${SUBNET_PREFIX:-172.30.91}
+  SENTRY_ENABLED: "false"
+
+services:
+  panda-wiki-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: panda-wiki
+      POSTGRES_DB: panda-wiki
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U panda-wiki -d panda-wiki"]
+      interval: 5s
+      retries: 20
+    networks: [wiki]
+  panda-wiki-redis:
+    image: redis:7-alpine
+    command: [redis-server, --requirepass, "${REDIS_PASSWORD:?required}"]
+    volumes: [redis-data:/data]
+    networks: [wiki]
+  panda-wiki-nats:
+    image: nats:2.11-alpine
+    command: [--js, --store_dir, /data, --user, panda-wiki, --pass, "${NATS_PASSWORD:?required}"]
+    volumes: [nats-data:/data]
+    networks:
+      wiki:
+        ipv4_address: ${SUBNET_PREFIX:-172.30.91}.13
+  panda-wiki-minio:
+    image: ${MINIO_IMAGE:?use a compatible image from your existing deployment}
+    command: [server, /data]
+    environment:
+      MINIO_ROOT_USER: s3panda-wiki
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?required}
+    volumes: [minio-data:/data]
+    networks:
+      wiki:
+        ipv4_address: ${SUBNET_PREFIX:-172.30.91}.12
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-run:/run
+      - caddy-data:/data
+    ports: ["127.0.0.1:19880:80", "127.0.0.1:19443:443"]
+    networks: [wiki]
+  panda-wiki-api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.api
+    environment: *backend-env
+    volumes: [caddy-run:/app/run, wiki-tls:/app/etc/nginx/ssl]
+    ports: ["127.0.0.1:28000:8000"]
+    depends_on:
+      panda-wiki-postgres: {condition: service_healthy}
+      panda-wiki-redis: {condition: service_started}
+      panda-wiki-nats: {condition: service_started}
+      panda-wiki-minio: {condition: service_started}
+      caddy: {condition: service_started}
+    restart: on-failure
+    networks:
+      wiki:
+        ipv4_address: ${SUBNET_PREFIX:-172.30.91}.2
+  panda-wiki-consumer:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.consumer
+    environment: *backend-env
+    volumes: [caddy-run:/app/run]
+    depends_on: [panda-wiki-api]
+    restart: on-failure
+    networks: [wiki]
+  panda-wiki-admin:
+    profiles: [frontend]
+    build: ../web/admin
+    volumes: [wiki-tls:/etc/nginx/ssl:ro]
+    ports: ["127.0.0.1:28443:8080"]
+    depends_on: [panda-wiki-api]
+    networks: [wiki]
+  panda-wiki-app:
+    profiles: [frontend]
+    build: ../web/app
+    environment:
+      TARGET: http://panda-wiki-api:8000
+    depends_on: [panda-wiki-api]
+    networks:
+      wiki:
+        ipv4_address: ${SUBNET_PREFIX:-172.30.91}.112
+
+networks:
+  wiki:
+    ipam:
+      config: [{subnet: "${SUBNET_PREFIX:-172.30.91}.0/24"}]
+volumes:
+  postgres-data:
+  redis-data:
+  nats-data:
+  minio-data:
+  caddy-run:
+  caddy-data:
+  wiki-tls:

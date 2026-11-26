@@ -1,3 +1,17 @@
+# PandaWiki_AI
+
+基于 PandaWiki 开源社区版进行二次开发，支持 AI 主动知识管理、聊天知识自动沉淀和知识持续演化的开源知识库系统。
+
+本项目为**非官方独立维护的衍生项目**，不代表长亭科技或 PandaWiki 官方授权、合作或支持。保留上游 AGPL-3.0 许可证、原作者版权和必要声明。
+
+2026-11-26：新增后台授权知识助手、知识收件箱、人工审核发布、异步知识提取、策略和来源审计。新增功能默认关闭；真实模型与 RAG 效果以实际部署验收为准。当前开发验证和已知限制见 [进度](docs/development/progress.md)。
+
+- [架构分析](docs/development/architecture-analysis.md)
+- [中文部署说明](docs/deployment/ai-knowledge-agent.md)
+- [中文使用说明](docs/usage/ai-knowledge-agent.md)
+
+以下保留上游项目介绍和版权相关资料：
+
 <p align="center">
   <a target="_blank" href="https://ragcloud.app.baizhi.cloud/?utm_source=github&utm_medium=readme&utm_campaign=saas">
     <img src="/images/saas-cta.svg" width="800" alt="PandaWiki SaaS 版 - 无需部署，立即在线体验" />

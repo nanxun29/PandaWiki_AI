@@ -1,0 +1,7 @@
+{
+	admin unix//run/caddy-admin.sock
+	auto_https off
+}
+:80 {
+	respond "PandaWiki_AI: configure a knowledge base to publish this site."
+}

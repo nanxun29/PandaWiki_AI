@@ -33,3 +33,13 @@ local
 
 .idea
 __debug*
+
+# Local AI deployment secrets
+deploy/.env
+
+# Community AI deployment templates (keep other local deployment files ignored)
+!/deploy/
+/deploy/*
+!/deploy/compose.ai.yml
+!/deploy/Caddyfile
+!/deploy/.env.example

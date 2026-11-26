@@ -39,6 +39,7 @@ const (
 
 // table: nodes
 type Node struct {
+	Revision    int64           `json:"revision" gorm:"default:1"`
 	ID          string          `json:"id" gorm:"primaryKey"`
 	KBID        string          `json:"kb_id" gorm:"index"`
 	NavId       string          `json:"nav_id"`

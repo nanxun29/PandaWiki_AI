@@ -7,6 +7,7 @@ const (
 )
 
 var TopicConsumerName = map[string]string{
+	KnowledgeTaskTopic:    "panda-wiki-knowledge-consumer",
 	VectorTaskTopic:       "panda-wiki-vector-consumer",
 	AnydocTaskExportTopic: "anydoc-task-export-consumer",
 	RagDocUpdateTopic:     "raglite-doc-update-consumer",

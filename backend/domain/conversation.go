@@ -11,8 +11,9 @@ import (
 )
 
 type Conversation struct {
-	ID    string `json:"id"`
-	Nonce string `json:"nonce"`
+	AdminUserID string `json:"-"`
+	ID          string `json:"id"`
+	Nonce       string `json:"nonce"`
 
 	KBID  string `json:"kb_id" gorm:"index"`
 	AppID string `json:"app_id" gorm:"index"`

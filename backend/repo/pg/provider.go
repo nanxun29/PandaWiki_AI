@@ -10,6 +10,7 @@ var ProviderSet = wire.NewSet(
 	pg.ProviderSet,
 
 	NewNodeRepository,
+	NewKnowledgeAgentRepository,
 	NewAppRepository,
 	NewConversationRepository,
 	NewUserRepository,

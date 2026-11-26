@@ -21,6 +21,7 @@ import (
 )
 
 type ChatUsecase struct {
+	knowledgeAgent      *KnowledgeAgentUsecase
 	llmUsecase          *LLMUsecase
 	conversationUsecase *ConversationUsecase
 	modelUsecase        *ModelUsecase
@@ -34,9 +35,10 @@ type ChatUsecase struct {
 }
 
 func NewChatUsecase(llmUsecase *LLMUsecase, kbRepo *pg.KnowledgeBaseRepository, conversationUsecase *ConversationUsecase, modelUsecase *ModelUsecase, appRepo *pg.AppRepository,
-	blockWordRepo *pg.BlockWordRepo, nodeRepo *pg.NodeRepository, authRepo *pg.AuthRepo, logger *log.Logger) (*ChatUsecase, error) {
+	blockWordRepo *pg.BlockWordRepo, nodeRepo *pg.NodeRepository, authRepo *pg.AuthRepo, logger *log.Logger, knowledgeAgent *KnowledgeAgentUsecase) (*ChatUsecase, error) {
 	modelkit := modelkit.NewModelKit(logger.Logger)
 	u := &ChatUsecase{
+		knowledgeAgent:      knowledgeAgent,
 		llmUsecase:          llmUsecase,
 		conversationUsecase: conversationUsecase,
 		modelUsecase:        modelUsecase,
@@ -80,6 +82,9 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 	eventCh := make(chan domain.SSEEvent, 100)
 	go func() {
 		defer close(eventCh)
+		if req.AdminUserID != "" {
+			defer u.knowledgeAgent.FinishChat(ctx, req)
+		}
 		// 1. get app detail and validate app
 		app, err := u.appRepo.GetOrCreateAppByKBIDAndType(ctx, req.KBID, req.AppType)
 		if err != nil {
@@ -106,14 +111,15 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			eventCh <- domain.SSEEvent{Type: "conversation_id", Content: req.ConversationID}
 			eventCh <- domain.SSEEvent{Type: "nonce", Content: nonce}
 			err = u.conversationUsecase.CreateConversation(ctx, &domain.Conversation{
-				ID:        req.ConversationID,
-				Nonce:     nonce,
-				AppID:     req.AppID,
-				KBID:      req.KBID,
-				Subject:   req.Message,
-				RemoteIP:  req.RemoteIP,
-				Info:      req.Info,
-				CreatedAt: time.Now(),
+				ID:          req.ConversationID,
+				Nonce:       nonce,
+				AppID:       req.AppID,
+				KBID:        req.KBID,
+				Subject:     req.Message,
+				RemoteIP:    req.RemoteIP,
+				Info:        req.Info,
+				AdminUserID: req.AdminUserID,
+				CreatedAt:   time.Now(),
 			})
 			if err != nil {
 				u.logger.Error("failed to create chat conversation", log.Error(err))
@@ -121,6 +127,7 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 				return
 			}
 		} else if req.ConversationID == "" {
+
 			id, err := uuid.NewV7()
 			if err != nil {
 				u.logger.Error("failed to generate conversation uuid", log.Error(err))
@@ -132,14 +139,15 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			eventCh <- domain.SSEEvent{Type: "conversation_id", Content: conversationID}
 			eventCh <- domain.SSEEvent{Type: "nonce", Content: nonce}
 			err = u.conversationUsecase.CreateConversation(ctx, &domain.Conversation{
-				ID:        conversationID,
-				Nonce:     nonce,
-				AppID:     req.AppID,
-				KBID:      req.KBID,
-				Subject:   req.Message,
-				RemoteIP:  req.RemoteIP,
-				Info:      req.Info,
-				CreatedAt: time.Now(),
+				ID:          conversationID,
+				Nonce:       nonce,
+				AppID:       req.AppID,
+				KBID:        req.KBID,
+				Subject:     req.Message,
+				RemoteIP:    req.RemoteIP,
+				Info:        req.Info,
+				AdminUserID: req.AdminUserID,
+				CreatedAt:   time.Now(),
 			})
 			if err != nil {
 				u.logger.Error("failed to create chat conversation", log.Error(err))
@@ -151,11 +159,25 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 				eventCh <- domain.SSEEvent{Type: "error", Content: "nonce is required"}
 				return
 			}
-			err := u.conversationUsecase.ValidateConversationNonce(ctx, req.ConversationID, req.Nonce)
+			var err error
+			if req.AdminUserID != "" {
+				_, err = u.knowledgeAgent.repo.Conversation(ctx, req.KBID, req.ConversationID, req.AdminUserID)
+			} else {
+				err = u.conversationUsecase.ValidateConversationNonce(ctx, req.ConversationID, req.Nonce)
+			}
 			if err != nil {
 				u.logger.Error("failed to validate chat conversation nonce", log.Error(err))
 				eventCh <- domain.SSEEvent{Type: "error", Content: "validate chat conversation nonce failed"}
 				return
+			}
+		}
+
+		if req.AdminUserID != "" {
+			if _, err := u.knowledgeAgent.repo.State(ctx, req.KBID, req.ConversationID, req.AdminUserID); err != nil {
+				if err := u.knowledgeAgent.RegisterConversation(ctx, req); err != nil {
+					eventCh <- domain.SSEEvent{Type: "error", Content: "创建后台会话授权失败"}
+					return
+				}
 			}
 		}
 
@@ -231,7 +253,9 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			return
 		}
 
-		u.logger.Debug("message:", log.Any("schema", messages))
+		if req.AdminUserID == "" {
+			u.logger.Debug("message:", log.Any("schema", messages))
+		}
 		for _, node := range rankedNodes {
 			chunkResult := domain.NodeContentChunkSSE{
 				NodeID:        node.NodeID,
@@ -261,7 +285,20 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 		// get words
 		onChunkAC, flushBuffer := u.CreateAcOnChunk(ctx, req.KBID, &answer, eventCh, blockWords)
 
-		chatErr := u.llmUsecase.ChatWithAgent(ctx, chatModel, messages, &usage, onChunkAC)
+		var chatErr error
+		if req.AdminUserID != "" {
+			messages, chatErr = u.knowledgeAgent.RunTools(ctx, req, messages, chatModel, func(e domain.SSEEvent) error {
+				select {
+				case eventCh <- e:
+					return nil
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			})
+		}
+		if chatErr == nil {
+			chatErr = u.llmUsecase.ChatWithAgent(ctx, chatModel, messages, &usage, onChunkAC)
+		}
 
 		// 处理缓冲区中剩余的内容
 		if flushBuffer != nil {
@@ -300,6 +337,9 @@ func (u *ChatUsecase) Chat(ctx context.Context, req *domain.ChatRequest) (<-chan
 			u.logger.Error("对话失败", log.Error(chatErr))
 			eventCh <- domain.SSEEvent{Type: "error", Content: "对话失败，请稍后再试"}
 			return
+		}
+		if req.AdminUserID != "" {
+			u.knowledgeAgent.QueueAfterChat(ctx, req, messageId)
 		}
 		eventCh <- domain.SSEEvent{Type: "done"}
 	}()
@@ -378,7 +418,11 @@ func (u *ChatUsecase) CreateAcOnChunk(ctx context.Context, kbID string, answer *
 	if len(blockWords) == 0 {
 		onChunk := func(ctx context.Context, dataType, chunk string) error {
 			*answer += chunk
-			eventCh <- domain.SSEEvent{Type: dataType, Content: chunk}
+			select {
+			case eventCh <- domain.SSEEvent{Type: dataType, Content: chunk}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 			return nil
 		}
 		return onChunk, nil
@@ -404,7 +448,11 @@ func (u *ChatUsecase) CreateAcOnChunk(ctx context.Context, kbID string, answer *
 			// 输出前面的部分，保留后面bufferSize - 1个rune
 			outputPart := string(processedRunes[:len(processedRunes)-filter.BuffSize+1])
 			*answer += outputPart
-			eventCh <- domain.SSEEvent{Type: dataType, Content: outputPart}
+			select {
+			case eventCh <- domain.SSEEvent{Type: dataType, Content: outputPart}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 
 			// 清空缓冲区
 			newBufferContent := string(processedRunes[len(processedRunes)-filter.BuffSize+1:])
@@ -420,7 +468,11 @@ func (u *ChatUsecase) CreateAcOnChunk(ctx context.Context, kbID string, answer *
 			fullContent := buffer.String()
 			processedContent := u.replaceWithSimpleString(fullContent, filter.DFA)
 			*answer += processedContent
-			eventCh <- domain.SSEEvent{Type: dataType, Content: processedContent}
+			select {
+			case eventCh <- domain.SSEEvent{Type: dataType, Content: processedContent}:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
 

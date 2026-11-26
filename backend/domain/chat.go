@@ -8,12 +8,16 @@ import (
 )
 
 type ChatRequest struct {
-	ConversationID string   `json:"conversation_id"`
-	Message        string   `json:"message"`
-	ImagePaths     []string `json:"image_paths" validate:"max=3"`
-	Nonce          string   `json:"nonce"`
-	AppType        AppType  `json:"app_type" validate:"required,oneof=1 2"`
-	CaptchaToken   string   `json:"captcha_token"`
+	KnowledgeChatTask   *KnowledgeTask `json:"-"`
+	AdminUserID         string         `json:"-"`
+	KnowledgeRequestKey string         `json:"-"`
+	ManualKnowledge     bool           `json:"-"`
+	ConversationID      string         `json:"conversation_id"`
+	Message             string         `json:"message"`
+	ImagePaths          []string       `json:"image_paths" validate:"max=3"`
+	Nonce               string         `json:"nonce"`
+	AppType             AppType        `json:"app_type" validate:"required,oneof=1 2"`
+	CaptchaToken        string         `json:"captcha_token"`
 
 	KBID  string `json:"-" validate:"required"`
 	AppID string `json:"-"`

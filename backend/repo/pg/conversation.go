@@ -42,7 +42,8 @@ func (r *ConversationRepository) GetConversationList(ctx context.Context, reques
 	conversations := []*domain.ConversationListItem{}
 	query := r.db.WithContext(ctx).
 		Model(&domain.Conversation{}).
-		Where("conversations.kb_id = ?", request.KBID)
+		Where("conversations.kb_id = ?", request.KBID).
+		Where("conversations.admin_user_id = '' OR conversations.admin_user_id = ?", privateConversationOwner(ctx))
 
 	if request.AppID != nil && *request.AppID != "" {
 		query = query.Where("conversations.app_id = ?", *request.AppID)
@@ -70,6 +71,9 @@ func (r *ConversationRepository) GetConversationList(ctx context.Context, reques
 }
 
 func (r *ConversationRepository) GetConversationDetail(ctx context.Context, kbID, conversationID string) (*domain.ConversationDetailResp, error) {
+	if err := r.authorizePrivate(ctx, conversationID); err != nil {
+		return nil, err
+	}
 	conversation := &domain.ConversationDetailResp{}
 	query := r.db.WithContext(ctx).
 		Model(&domain.Conversation{}).
@@ -85,6 +89,9 @@ func (r *ConversationRepository) GetConversationDetail(ctx context.Context, kbID
 }
 
 func (r *ConversationRepository) GetConversationReferences(ctx context.Context, conversationID string) ([]*domain.ConversationReference, error) {
+	if err := r.authorizePrivate(ctx, conversationID); err != nil {
+		return nil, err
+	}
 	references := []*domain.ConversationReference{}
 	if err := r.db.WithContext(ctx).
 		Model(&domain.ConversationReference{}).
@@ -96,6 +103,9 @@ func (r *ConversationRepository) GetConversationReferences(ctx context.Context, 
 }
 
 func (r *ConversationRepository) GetConversationMessagesByID(ctx context.Context, conversationID string) ([]*domain.ConversationMessage, error) {
+	if err := r.authorizePrivate(ctx, conversationID); err != nil {
+		return nil, err
+	}
 	messages := []*domain.ConversationMessage{}
 	if err := r.db.WithContext(ctx).
 		Model(&domain.ConversationMessage{}).
@@ -108,6 +118,9 @@ func (r *ConversationRepository) GetConversationMessagesByID(ctx context.Context
 }
 
 func (r *ConversationRepository) ValidateConversationNonce(ctx context.Context, conversationID, nonce string) error {
+	if err := r.authorizePrivate(ctx, conversationID); err != nil {
+		return err
+	}
 	conversation := &domain.Conversation{}
 	if err := r.db.WithContext(ctx).
 		Model(&domain.Conversation{}).
@@ -153,6 +166,9 @@ func (r *ConversationRepository) GetConversationMessagesDetailByID(ctx context.C
 		First(&message).Error; err != nil {
 		return nil, err
 	}
+	if err := r.authorizePrivate(ctx, message.ConversationID); err != nil {
+		return nil, err
+	}
 	return message, nil
 }
 
@@ -163,6 +179,9 @@ func (r *ConversationRepository) GetConversationMessagesDetailByKbID(ctx context
 		Where("id = ?", messageId).
 		Where("kb_id = ?", kbId).
 		First(&message).Error; err != nil {
+		return nil, err
+	}
+	if err := r.authorizePrivate(ctx, message.ConversationID); err != nil {
 		return nil, err
 	}
 	return message, nil
@@ -213,6 +232,7 @@ func (r *ConversationRepository) GetMessageFeedBackList(ctx context.Context, req
 	query := r.db.WithContext(ctx).Table("conversation_messages as cm").
 		Joins("JOIN conversations ON conversations.id = cm.conversation_id").
 		Where("conversations.kb_id = ?", req.KBID).
+		Where("conversations.admin_user_id = '' OR conversations.admin_user_id = ?", privateConversationOwner(ctx)).
 		Where("cm.info is not null AND cm.info->>'score' != ?", "0").
 		Where("role = ?", schema.Assistant)
 
@@ -227,6 +247,7 @@ func (r *ConversationRepository) GetMessageFeedBackList(ctx context.Context, req
 		Joins("JOIN conversations ON conversations.id = cm.conversation_id").
 		Joins("JOIN apps ON cm.app_id = apps.id").
 		Where("conversations.kb_id = ?", req.KBID).
+		Where("conversations.admin_user_id = '' OR conversations.admin_user_id = ?", privateConversationOwner(ctx)).
 		Where("cm.info is not null AND cm.info->>'score' != ?", "0").
 		Where("role = ?", schema.Assistant)
 
@@ -291,4 +312,27 @@ func (r *ConversationRepository) GetConversationCountByAppType(ctx context.Conte
 		result[domain.AppType(rrow.AppType)] = rrow.Count
 	}
 	return result, nil
+}
+
+// authorizePrivate keeps backend-owned conversations out of public and unrelated admin APIs.
+func (r *ConversationRepository) authorizePrivate(ctx context.Context, id string) error {
+	var conversation domain.Conversation
+	if err := r.db.WithContext(ctx).Select("id", "admin_user_id").Where("id = ?", id).First(&conversation).Error; err != nil {
+		return err
+	}
+	if conversation.AdminUserID == "" {
+		return nil
+	}
+	auth := domain.GetAuthInfoFromCtx(ctx)
+	if auth == nil || auth.IsToken || auth.UserId != conversation.AdminUserID {
+		return domain.ErrKnowledgeForbidden
+	}
+	return nil
+}
+func privateConversationOwner(ctx context.Context) string {
+	auth := domain.GetAuthInfoFromCtx(ctx)
+	if auth == nil || auth.IsToken {
+		return ""
+	}
+	return auth.UserId
 }

@@ -36,6 +36,11 @@ type consumerPolicy struct {
 // 其它主题（例如 raglite 文档状态回调）处理很快，且事件丢了不会自动补发，
 // 因此保持服务端原有配置，避免 MaxDeliver 限制导致状态永久停在 RUNNING。
 var jetStreamPolicies = map[string]consumerPolicy{
+	domain.KnowledgeTaskTopic: {
+		ackWait:       consumerAckWait,
+		maxAckPending: 2,
+		maxDeliver:    consumerMaxDeliver,
+	},
 	domain.VectorTaskTopic: {
 		ackWait:       consumerAckWait,
 		maxAckPending: consumerMaxAckPending,

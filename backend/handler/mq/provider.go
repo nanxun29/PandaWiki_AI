@@ -12,9 +12,10 @@ import (
 )
 
 type MQHandlers struct {
-	RAGMQHandler        *RAGMQHandler
-	RagDocUpdateHandler *RagDocUpdateHandler
-	StatCronHandler     *CronHandler
+	KnowledgeAgentHandler *KnowledgeAgentHandler
+	RAGMQHandler          *RAGMQHandler
+	RagDocUpdateHandler   *RagDocUpdateHandler
+	StatCronHandler       *CronHandler
 }
 
 var ProviderSet = wire.NewSet(
@@ -28,6 +29,9 @@ var ProviderSet = wire.NewSet(
 	usecase.NewStatUseCase,
 	usecase.NewNodeUsecase,
 	usecase.NewModelUsecase,
+	usecase.NewKnowledgeBaseUsecase,
+	usecase.NewKnowledgeAgentUsecase,
+	NewKnowledgeAgentHandler,
 
 	NewRAGMQHandler,
 	NewRagDocUpdateHandler,

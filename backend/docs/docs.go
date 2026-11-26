@@ -317,7 +317,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_chaitin_panda-wiki_api_auth_v1.AuthSetReq"
+                            "$ref": "#/definitions/v1.AuthSetReq"
                         }
                     }
                 ],
@@ -1029,6 +1029,519 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/audits": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "获取 AI 操作审计",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "知识库 ID",
+                        "name": "kb_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.KnowledgeAudit"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/changes": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "获取知识收件箱",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "知识库 ID",
+                        "name": "kb_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.KnowledgeChange"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/changes/regenerate": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "重新提取知识建议",
+                "parameters": [
+                    {
+                        "description": "原建议和幂等键",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeReviewReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.KnowledgeTask"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/changes/rollback": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "创建回滚建议",
+                "parameters": [
+                    {
+                        "description": "已发布变更和幂等键",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeReviewReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.KnowledgeChange"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/chat": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "后台知识助手流式聊天",
+                "parameters": [
+                    {
+                        "description": "聊天请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeChatReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/extract": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "提交聊天知识整理任务",
+                "parameters": [
+                    {
+                        "description": "会话及幂等键",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeChatReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.KnowledgeTask"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/messages": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "获取私有助手会话消息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "知识库 ID",
+                        "name": "kb_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "会话 ID",
+                        "name": "conversation_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.ConversationMessage"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/policy": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "获取知识管理策略",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "知识库 ID",
+                        "name": "kb_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PWResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "更新知识管理策略",
+                "parameters": [
+                    {
+                        "description": "策略",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgePolicy"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PWResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/review/{action}": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "编辑、批准或拒绝知识变更",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "edit/approve/reject",
+                        "name": "action",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "审核请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeReviewReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.KnowledgeChange"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "获取知识任务状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "知识库 ID",
+                        "name": "kb_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/domain.PWResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.KnowledgeTask"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/knowledge-agent/tasks/{action}": {
+            "post": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "knowledge_agent"
+                ],
+                "summary": "重试或取消知识任务",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "retry/cancel",
+                        "name": "action",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "任务 ID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.KnowledgeReviewReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PWResponse"
                         }
                     }
                 }
@@ -3675,7 +4188,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_chaitin_panda-wiki_api_share_v1.AuthGitHubReq"
+                            "$ref": "#/definitions/v1.AuthGitHubReq"
                         }
                     }
                 ],
@@ -3691,7 +4204,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_chaitin_panda-wiki_api_share_v1.AuthGitHubResp"
+                                            "$ref": "#/definitions/v1.AuthGitHubResp"
                                         }
                                     }
                                 }
@@ -4210,7 +4723,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_chaitin_panda-wiki_api_share_v1.FileUploadResp"
+                                            "$ref": "#/definitions/v1.FileUploadResp"
                                         }
                                     }
                                 }
@@ -6141,7 +6654,7 @@ const docTemplate = `{
                     "description": "status : -1 reject 0 pending 1 accept",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_chaitin_panda-wiki_domain.CommentStatus"
+                            "$ref": "#/definitions/domain.CommentStatus"
                         }
                     ]
                 }
@@ -6180,6 +6693,20 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "domain.CommentStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                -1,
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "CommentStatusReject",
+                "CommentStatusPending",
+                "CommentStatusAccepted"
+            ]
         },
         "domain.CompleteReq": {
             "type": "object",
@@ -6240,7 +6767,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "user_info": {
-                    "$ref": "#/definitions/github_com_chaitin_panda-wiki_domain.UserInfo"
+                    "$ref": "#/definitions/domain.UserInfo"
                 }
             }
         },
@@ -6962,6 +7489,32 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.KnowledgeAudit": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "change_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.KnowledgeBaseDetail": {
             "type": "object",
             "properties": {
@@ -7012,6 +7565,264 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.KnowledgeChange": {
+            "type": "object",
+            "properties": {
+                "after": {
+                    "type": "string"
+                },
+                "base_revision": {
+                    "type": "integer"
+                },
+                "before": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "conversation_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "model_id": {
+                    "type": "string"
+                },
+                "proposal": {
+                    "$ref": "#/definitions/domain.KnowledgeExtraction"
+                },
+                "published_revision": {
+                    "type": "integer"
+                },
+                "release_id": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "reviewer_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.KnowledgeChatReq": {
+            "type": "object",
+            "properties": {
+                "conversation_id": {
+                    "type": "string"
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.KnowledgeExtraction": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "knowledge_type": {
+                    "type": "string"
+                },
+                "nav_id": {
+                    "type": "string"
+                },
+                "new_text": {
+                    "type": "string"
+                },
+                "old_text": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "should_save": {
+                    "type": "boolean"
+                },
+                "source_message_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "target_document_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "verification_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.KnowledgePolicy": {
+            "type": "object",
+            "properties": {
+                "allow_model_transfer": {
+                    "type": "boolean"
+                },
+                "daily_calls": {
+                    "type": "integer"
+                },
+                "folder_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "model_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "domain.KnowledgeReviewReq": {
+            "type": "object",
+            "properties": {
+                "after": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "nav_id": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "target_document_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.KnowledgeTask": {
+            "type": "object",
+            "properties": {
+                "attempts": {
+                    "type": "integer"
+                },
+                "available_at": {
+                    "type": "string"
+                },
+                "conversation_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "lease_until": {
+                    "type": "string"
+                },
+                "message_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "release_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -7247,6 +8058,32 @@ const docTemplate = `{
                 },
                 "summary": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.NodeGroupDetail": {
+            "type": "object",
+            "properties": {
+                "auth_group_id": {
+                    "type": "integer"
+                },
+                "auth_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "perm": {
+                    "$ref": "#/definitions/consts.NodePermName"
                 }
             }
         },
@@ -8300,6 +9137,33 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.UserInfo": {
+            "type": "object",
+            "properties": {
+                "auth_user_id": {
+                    "type": "integer"
+                },
+                "avatar": {
+                    "description": "avatar",
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "from": {
+                    "$ref": "#/definitions/domain.MessageFrom"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "real_name": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.WeChatAppAdvancedSetting": {
             "type": "object",
             "properties": {
@@ -8583,7 +9447,7 @@ const docTemplate = `{
                 "auths": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_chaitin_panda-wiki_api_auth_v1.AuthItem"
+                        "$ref": "#/definitions/v1.AuthItem"
                     }
                 },
                 "client_id": {
@@ -8597,62 +9461,6 @@ const docTemplate = `{
                 },
                 "source_type": {
                     "$ref": "#/definitions/consts.SourceType"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_api_auth_v1.AuthItem": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ip": {
-                    "type": "string"
-                },
-                "last_login_time": {
-                    "type": "string"
-                },
-                "source_type": {
-                    "$ref": "#/definitions/consts.SourceType"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_api_auth_v1.AuthSetReq": {
-            "type": "object",
-            "required": [
-                "source_type"
-            ],
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "client_secret": {
-                    "type": "string"
-                },
-                "kb_id": {
-                    "type": "string"
-                },
-                "proxy": {
-                    "type": "string"
-                },
-                "source_type": {
-                    "enum": [
-                        "github"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/consts.SourceType"
-                        }
-                    ]
                 }
             }
         },
@@ -8693,33 +9501,6 @@ const docTemplate = `{
                 },
                 "source_type": {
                     "$ref": "#/definitions/consts.SourceType"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_api_share_v1.AuthGitHubReq": {
-            "type": "object",
-            "properties": {
-                "kb_id": {
-                    "type": "string"
-                },
-                "redirect_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_api_share_v1.AuthGitHubResp": {
-            "type": "object",
-            "properties": {
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_api_share_v1.FileUploadResp": {
-            "type": "object",
-            "properties": {
-                "key": {
-                    "type": "string"
                 }
             }
         },
@@ -8783,20 +9564,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "github_com_chaitin_panda-wiki_domain.CommentStatus": {
-            "type": "integer",
-            "format": "int32",
-            "enum": [
-                -1,
-                0,
-                1
-            ],
-            "x-enum-varnames": [
-                "CommentStatusReject",
-                "CommentStatusPending",
-                "CommentStatusAccepted"
-            ]
         },
         "github_com_chaitin_panda-wiki_domain.ModelListItem": {
             "type": "object",
@@ -8880,59 +9647,6 @@ const docTemplate = `{
                 "ModelProviderBaiZhiCloudModelStore"
             ]
         },
-        "github_com_chaitin_panda-wiki_domain.NodeGroupDetail": {
-            "type": "object",
-            "properties": {
-                "auth_group_id": {
-                    "type": "integer"
-                },
-                "auth_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "kb_id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "node_id": {
-                    "type": "string"
-                },
-                "perm": {
-                    "$ref": "#/definitions/consts.NodePermName"
-                }
-            }
-        },
-        "github_com_chaitin_panda-wiki_domain.UserInfo": {
-            "type": "object",
-            "properties": {
-                "auth_user_id": {
-                    "type": "integer"
-                },
-                "avatar": {
-                    "description": "avatar",
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "from": {
-                    "$ref": "#/definitions/domain.MessageFrom"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "real_name": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
         "gocap.ChallengeData": {
             "type": "object",
             "properties": {
@@ -9014,6 +9728,51 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.AuthGitHubReq": {
+            "type": "object",
+            "properties": {
+                "kb_id": {
+                    "type": "string"
+                },
+                "redirect_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.AuthGitHubResp": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.AuthItem": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "last_login_time": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "$ref": "#/definitions/consts.SourceType"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.AuthLoginSimpleReq": {
             "type": "object",
             "required": [
@@ -9022,6 +9781,36 @@ const docTemplate = `{
             "properties": {
                 "password": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.AuthSetReq": {
+            "type": "object",
+            "required": [
+                "source_type"
+            ],
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "client_secret": {
+                    "type": "string"
+                },
+                "kb_id": {
+                    "type": "string"
+                },
+                "proxy": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "enum": [
+                        "github"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/consts.SourceType"
+                        }
+                    ]
                 }
             }
         },
@@ -9223,6 +10012,14 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.FileUploadResp": {
+            "type": "object",
+            "properties": {
+                "key": {
                     "type": "string"
                 }
             }
@@ -9538,7 +10335,7 @@ const docTemplate = `{
                     "description": "可被问答",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_chaitin_panda-wiki_domain.NodeGroupDetail"
+                        "$ref": "#/definitions/domain.NodeGroupDetail"
                     }
                 },
                 "id": {
@@ -9551,14 +10348,14 @@ const docTemplate = `{
                     "description": "导航内可见",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_chaitin_panda-wiki_domain.NodeGroupDetail"
+                        "$ref": "#/definitions/domain.NodeGroupDetail"
                     }
                 },
                 "visitable_groups": {
                     "description": "可被访问",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_chaitin_panda-wiki_domain.NodeGroupDetail"
+                        "$ref": "#/definitions/domain.NodeGroupDetail"
                     }
                 }
             }

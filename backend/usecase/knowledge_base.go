@@ -159,6 +159,11 @@ func (u *KnowledgeBaseUsecase) DeleteKnowledgeBase(ctx context.Context, kbID str
 }
 
 func (u *KnowledgeBaseUsecase) CreateKBRelease(ctx context.Context, req *domain.CreateKBReleaseReq, userId string) (string, error) {
+	return u.createKBRelease(ctx, req, userId, u.ragRepo.AsyncUpdateNodeReleaseVector)
+}
+
+// createKBRelease permits a transactional outbox while preserving the original publication flow.
+func (u *KnowledgeBaseUsecase) createKBRelease(ctx context.Context, req *domain.CreateKBReleaseReq, userId string, enqueue func(context.Context, []*domain.NodeReleaseVectorRequest) error) (string, error) {
 	if len(req.NodeIDs) > 0 {
 		// create published nodes
 		releaseIDs, err := u.nodeRepo.CreateNodeReleases(ctx, req.KBID, userId, req.NodeIDs)
@@ -175,7 +180,7 @@ func (u *KnowledgeBaseUsecase) CreateKBRelease(ctx context.Context, req *domain.
 					Action:        "upsert",
 				})
 			}
-			if err := u.ragRepo.AsyncUpdateNodeReleaseVector(ctx, nodeContentVectorRequests); err != nil {
+			if err := enqueue(ctx, nodeContentVectorRequests); err != nil {
 				return "", err
 			}
 		}

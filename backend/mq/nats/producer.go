@@ -23,6 +23,10 @@ func (p *MQProducer) EnsureStreams() error {
 		subjects []string
 	}{
 		{
+			name:     "knowledge",
+			subjects: []string{"apps.panda-wiki.knowledge.task"},
+		},
+		{
 			name:     "task",
 			subjects: []string{"apps.panda-wiki.summary.task", "apps.panda-wiki.vector.task"},
 		},

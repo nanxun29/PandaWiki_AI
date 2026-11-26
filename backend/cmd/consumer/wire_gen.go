@@ -35,27 +35,51 @@ func createApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	ragService, err := rag.NewRAGService(configConfig, logger)
-	if err != nil {
-		return nil, err
-	}
 	db, err := pg.NewDB(configConfig)
 	if err != nil {
 		return nil, err
 	}
+	knowledgeAgentRepository := pg2.NewKnowledgeAgentRepository(db, logger)
 	nodeRepository := pg2.NewNodeRepository(db, logger)
-	knowledgeBaseRepository := pg2.NewKnowledgeBaseRepository(db, configConfig, logger, ragService)
-	conversationRepository := pg2.NewConversationRepository(db, logger)
-	modelRepository := pg2.NewModelRepository(db, logger)
-	promptRepo := pg2.NewPromptRepo(db, logger)
-	llmUsecase := usecase.NewLLMUsecase(configConfig, ragService, conversationRepository, knowledgeBaseRepository, nodeRepository, modelRepository, promptRepo, logger)
+	navRepository := pg2.NewNavRepository(db, logger)
+	appRepository := pg2.NewAppRepository(db, logger)
 	mqProducer, err := mq.NewMQProducer(configConfig, logger)
 	if err != nil {
 		return nil, err
 	}
 	ragRepository := mq2.NewRAGRepository(mqProducer)
+	userRepository := pg2.NewUserRepository(db, logger)
+	ragService, err := rag.NewRAGService(configConfig, logger)
+	if err != nil {
+		return nil, err
+	}
+	knowledgeBaseRepository := pg2.NewKnowledgeBaseRepository(db, configConfig, logger, ragService)
+	conversationRepository := pg2.NewConversationRepository(db, logger)
+	modelRepository := pg2.NewModelRepository(db, logger)
+	promptRepo := pg2.NewPromptRepo(db, logger)
+	llmUsecase := usecase.NewLLMUsecase(configConfig, ragService, conversationRepository, knowledgeBaseRepository, nodeRepository, modelRepository, promptRepo, logger)
+	minioClient, err := s3.NewMinioClient(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	cacheCache, err := cache.NewCache(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	authRepo := pg2.NewAuthRepo(db, logger, cacheCache)
 	systemSettingRepo := pg2.NewSystemSettingRepo(db, logger)
 	modelUsecase := usecase.NewModelUsecase(modelRepository, nodeRepository, ragRepository, ragService, logger, configConfig, knowledgeBaseRepository, systemSettingRepo)
+	nodeUsecase := usecase.NewNodeUsecase(nodeRepository, navRepository, appRepository, ragRepository, userRepository, knowledgeBaseRepository, llmUsecase, ragService, logger, minioClient, modelRepository, authRepo, modelUsecase)
+	kbRepo := cache2.NewKBRepo(cacheCache)
+	knowledgeBaseUsecase, err := usecase.NewKnowledgeBaseUsecase(knowledgeBaseRepository, nodeRepository, navRepository, ragRepository, userRepository, ragService, kbRepo, logger, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	knowledgeAgentUsecase := usecase.NewKnowledgeAgentUsecase(knowledgeAgentRepository, nodeUsecase, knowledgeBaseUsecase, modelUsecase, llmUsecase, navRepository, logger)
+	knowledgeAgentHandler, err := mq3.NewKnowledgeAgentHandler(knowledgeAgentUsecase, mqConsumer, mqProducer, logger)
+	if err != nil {
+		return nil, err
+	}
 	ragmqHandler, err := mq3.NewRAGMQHandler(mqConsumer, logger, ragService, nodeRepository, knowledgeBaseRepository, llmUsecase, modelUsecase)
 	if err != nil {
 		return nil, err
@@ -64,35 +88,23 @@ func createApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	cacheCache, err := cache.NewCache(configConfig)
-	if err != nil {
-		return nil, err
-	}
 	statRepository := pg2.NewStatRepository(db, cacheCache)
-	appRepository := pg2.NewAppRepository(db, logger)
 	ipdbIPDB, err := ipdb.NewIPDB(configConfig, logger)
 	if err != nil {
 		return nil, err
 	}
 	ipAddressRepo := ipdb2.NewIPAddressRepo(ipdbIPDB, logger)
 	geoRepo := cache2.NewGeoCache(cacheCache, db, logger)
-	authRepo := pg2.NewAuthRepo(db, logger, cacheCache)
 	statUseCase := usecase.NewStatUseCase(statRepository, nodeRepository, conversationRepository, appRepository, ipAddressRepo, geoRepo, authRepo, knowledgeBaseRepository, logger)
-	navRepository := pg2.NewNavRepository(db, logger)
-	userRepository := pg2.NewUserRepository(db, logger)
-	minioClient, err := s3.NewMinioClient(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	nodeUsecase := usecase.NewNodeUsecase(nodeRepository, navRepository, appRepository, ragRepository, userRepository, knowledgeBaseRepository, llmUsecase, ragService, logger, minioClient, modelRepository, authRepo, modelUsecase)
 	cronHandler, err := mq3.NewCronHandler(logger, statRepository, nodeRepository, statUseCase, nodeUsecase)
 	if err != nil {
 		return nil, err
 	}
 	mqHandlers := &mq3.MQHandlers{
-		RAGMQHandler:        ragmqHandler,
-		RagDocUpdateHandler: ragDocUpdateHandler,
-		StatCronHandler:     cronHandler,
+		KnowledgeAgentHandler: knowledgeAgentHandler,
+		RAGMQHandler:          ragmqHandler,
+		RagDocUpdateHandler:   ragDocUpdateHandler,
+		StatCronHandler:       cronHandler,
 	}
 	app := &App{
 		MQConsumer:      mqConsumer,
